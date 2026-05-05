@@ -1,0 +1,6 @@
+{
+  "name": "房箱 3D 设计工具",
+  "description": "基于浏览器完全离线的 3D 房箱设计工具，支持工程管理与无缝的 ZIP 包导入导出。",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
