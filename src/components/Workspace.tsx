@@ -1,22 +1,34 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { FolderPlus, FileArchive, Folder, Trash2, Clock, Upload } from 'lucide-react';
+import { FolderPlus, FileArchive, Folder, Trash2, Clock, Upload, X } from 'lucide-react';
 import { vfs } from '../services/vfs';
 import { motion } from 'motion/react';
 
 export default function Workspace() {
   const { projects, loadWorkspace, createProject, openProject, deleteProject, importProject } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Custom dialog states
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     loadWorkspace();
   }, [loadWorkspace]);
 
-  const handleCreate = () => {
-    const name = prompt('输入工程名称:', '新工程 ' + (projects.length + 1));
-    if (name) {
-      createProject(name);
+  const handleCreateClick = () => {
+    setNewProjectName('新工程 ' + (projects.length + 1));
+    setCreateDialogOpen(true);
+  };
+
+  const submitCreate = () => {
+    if (newProjectName.trim()) {
+      createProject(newProjectName.trim());
     }
+    setCreateDialogOpen(false);
   };
 
   const handleImportClick = () => {
@@ -65,7 +77,7 @@ export default function Workspace() {
               <span>导入工程 (ZIP)</span>
             </button>
             <button 
-              onClick={handleCreate}
+              onClick={handleCreateClick}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm font-medium"
             >
               <FolderPlus className="w-4 h-4" />
@@ -87,9 +99,8 @@ export default function Workspace() {
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    if(confirm(`确定删除工程 ${proj.name} 吗？`)) {
-                      deleteProject(proj.id);
-                    }
+                    setProjectToDelete({ id: proj.id, name: proj.name });
+                    setDeleteDialogOpen(true);
                   }}
                   className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                   title="删除工程"
@@ -120,6 +131,88 @@ export default function Workspace() {
           )}
         </div>
       </div>
+
+      {/* Create Dialog */}
+      {createDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">新建工程</h2>
+              <button onClick={() => setCreateDialogOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">工程名称</label>
+              <input 
+                type="text" 
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitCreate()}
+                autoFocus
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setCreateDialogOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={submitCreate}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+              >
+                创建
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Dialog */}
+      {deleteDialogOpen && projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+          >
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 mb-2">删除工程</h2>
+              <p className="text-slate-600 text-sm">
+                确定要删除工程 <span className="font-semibold text-slate-900">{projectToDelete.name}</span> 吗？此操作无法恢复。
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setProjectToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={() => {
+                  deleteProject(projectToDelete.id);
+                  setDeleteDialogOpen(false);
+                  setProjectToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors"
+              >
+                确定删除
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

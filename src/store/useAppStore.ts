@@ -20,6 +20,10 @@ interface AppState {
   deleteProject: (id: string) => Promise<void>;
   importProject: (file: File) => Promise<void>;
 
+  // Panel
+  isPanelOpen: boolean;
+  setPanelOpen: (open: boolean) => void;
+
   // File Actions
   selectFile: (path: string) => void;
   saveDesignData: () => Promise<void>;
@@ -29,6 +33,16 @@ interface AppState {
   updateContainer: (id: string, updates: any) => void;
   removeContainer: (id: string) => void;
   selectContainer: (id: string | null) => void;
+  
+  // Camera
+  cameraZoom: number;
+  setCameraZoom: (zoom: number) => void;
+  cameraResetTrigger: number;
+  resetCameraToIsometric: () => void;
+  
+  // Scene Fullscreen
+  isFullscreen: boolean;
+  setFullscreen: (val: boolean) => void;
 }
 
 import { v4 as uuidv4 } from 'uuid';
@@ -40,6 +54,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedFile: null,
   designData: null,
   selectedContainerId: null,
+  isPanelOpen: false,
+
+  setPanelOpen: (open) => set({ isPanelOpen: open }),
 
   loadWorkspace: async () => {
     const projects = await vfs.getProjects();
@@ -49,6 +66,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   createProject: async (name) => {
     const meta = await vfs.createProject(name);
     await get().loadWorkspace();
+    await get().openProject(meta.id);
   },
 
   openProject: async (id) => {
@@ -67,13 +85,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         view: 'editor', 
         selectedFile: 'design.json',
         designData,
-        selectedContainerId: null
+        selectedContainerId: designData?.containers?.[0]?.id || null,
+        isPanelOpen: false
       });
     }
   },
 
   closeProject: () => {
-    set({ currentDrive: null, view: 'workspace', selectedFile: null, designData: null, selectedContainerId: null });
+    set({ currentDrive: null, view: 'workspace', selectedFile: null, designData: null, selectedContainerId: null, isPanelOpen: false });
     get().loadWorkspace();
   },
 
@@ -142,7 +161,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     await saveDesignData();
   },
 
-  updateContainer: async (id, updates) => {
+  updateContainer: (id, updates) => {
     set((state) => {
       if (!state.designData) return state;
       return {
@@ -154,8 +173,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
     });
-    // Debounce save in real app, but direct for now
-    await get().saveDesignData();
+    
+    // Debounce save to prevent massive IndexedDB lag which freezes the Canvas
+    const w = window as any;
+    clearTimeout(w.dbSaveTimeout);
+    w.dbSaveTimeout = setTimeout(() => {
+      get().saveDesignData();
+    }, 300);
   },
 
   removeContainer: async (id) => {
@@ -174,6 +198,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   selectContainer: (id) => {
     set({ selectedContainerId: id });
-  }
+  },
+
+  cameraResetTrigger: 0,
+  cameraZoom: 1,
+  setCameraZoom: (zoom) => set({ cameraZoom: zoom }),
+  resetCameraToIsometric: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
+  
+  isFullscreen: false,
+  setFullscreen: (val) => set({ isFullscreen: val })
 
 }));
