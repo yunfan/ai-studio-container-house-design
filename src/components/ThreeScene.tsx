@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, ContactShadows, Edges } from '@react-three/drei';
 import * as THREE from 'three';
+import { PartRenderer } from './parts/PartRenderer';
 
 function CameraController() {
   const { camera, controls } = useThree();
@@ -118,8 +119,10 @@ export function Scene() {
             scale={container.size}
             onClick={(e) => {
               e.stopPropagation();
-              selectContainer(container.id);
-              setPanelOpen(true);
+              if (e.delta <= 2) {
+                selectContainer(container.id);
+                setPanelOpen(true);
+              }
             }}
             onPointerMissed={(e) => {
               if (e.type === 'click') {
@@ -145,7 +148,18 @@ export function Scene() {
         );
       })}
 
-      <OrbitControls makeDefault enableDamping={true} dampingFactor={0.05} />
+      <PartRenderer />
+
+      <OrbitControls 
+        makeDefault 
+        enableDamping={true} 
+        dampingFactor={0.05} 
+        mouseButtons={{
+          LEFT: THREE.MOUSE.ROTATE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.PAN
+        }}
+      />
     </>
   );
 }

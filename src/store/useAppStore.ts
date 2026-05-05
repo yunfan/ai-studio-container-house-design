@@ -1,5 +1,29 @@
 import { create } from 'zustand';
 import { vfs, ProjectMeta, ProjectDrive } from '../services/vfs';
+import { v4 as uuidv4 } from 'uuid';
+
+export const PART_DEFAULT_SIZES: Record<string, [number, number, number]> = {
+  'Bed': [2, 0.5, 1.5],
+  'Sofa': [2, 0.8, 1],
+  'Fridge': [0.8, 1.8, 0.8],
+  'Toilet': [0.5, 0.8, 0.7],
+  'TV': [1.2, 0.8, 0.1],
+  'Table': [1.5, 0.8, 0.8],
+  'Chair': [0.5, 1, 0.5],
+  'Wardrobe': [1.2, 2.0, 0.6],
+  'Sink': [0.8, 0.9, 0.6],
+  'Shower': [0.9, 2.0, 0.9],
+  'Stove': [0.6, 0.9, 0.6]
+};
+
+interface Part {
+  id: string;
+  type: string; // 'Bed', 'Toilet', 'Sofa', 'Fridge', etc.
+  position: [number, number, number];
+  rotation: [number, number, number];
+  color: string;
+  scale: [number, number, number]; // This is effectively the size
+}
 
 interface AppState {
   // App view state
@@ -11,6 +35,7 @@ interface AppState {
   // 3D Design State (Parsed from currentDrive.files['design.json'])
   designData: any | null;
   selectedContainerId: string | null;
+  selectedPartId: string | null;
 
   // Actions
   loadWorkspace: () => Promise<void>;
@@ -23,6 +48,10 @@ interface AppState {
   // Panel
   isPanelOpen: boolean;
   setPanelOpen: (open: boolean) => void;
+  isLibraryOpen: boolean;
+  setLibraryOpen: (open: boolean) => void;
+  isSceneListOpen: boolean;
+  setSceneListOpen: (open: boolean) => void;
 
   // File Actions
   selectFile: (path: string) => void;
@@ -33,6 +62,12 @@ interface AppState {
   updateContainer: (id: string, updates: any) => void;
   removeContainer: (id: string) => void;
   selectContainer: (id: string | null) => void;
+
+  // Part Actions
+  addPart: (type: string) => void;
+  updatePart: (id: string, updates: Partial<Part>) => void;
+  removePart: (id: string) => void;
+  selectPart: (id: string | null) => void;
   
   // Camera
   cameraZoom: number;
@@ -45,8 +80,6 @@ interface AppState {
   setFullscreen: (val: boolean) => void;
 }
 
-import { v4 as uuidv4 } from 'uuid';
-
 export const useAppStore = create<AppState>((set, get) => ({
   view: 'workspace',
   projects: [],
@@ -54,9 +87,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedFile: null,
   designData: null,
   selectedContainerId: null,
+  selectedPartId: null,
   isPanelOpen: false,
+  isLibraryOpen: false,
+  isSceneListOpen: false,
 
   setPanelOpen: (open) => set({ isPanelOpen: open }),
+  setLibraryOpen: (open) => set({ isLibraryOpen: open }),
+  setSceneListOpen: (open) => set({ isSceneListOpen: open }),
 
   loadWorkspace: async () => {
     const projects = await vfs.getProjects();
@@ -86,13 +124,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         selectedFile: 'design.json',
         designData,
         selectedContainerId: designData?.containers?.[0]?.id || null,
+        selectedPartId: null,
         isPanelOpen: false
       });
     }
   },
 
   closeProject: () => {
-    set({ currentDrive: null, view: 'workspace', selectedFile: null, designData: null, selectedContainerId: null, isPanelOpen: false });
+    set({ currentDrive: null, view: 'workspace', selectedFile: null, designData: null, selectedContainerId: null, selectedPartId: null, isPanelOpen: false, isLibraryOpen: false });
     get().loadWorkspace();
   },
 
@@ -107,7 +146,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectFile: (path) => {
-    set({ selectedFile: path, selectedContainerId: null });
+    set({ selectedFile: path, selectedContainerId: null, selectedPartId: null });
   },
 
   saveDesignData: async () => {
@@ -197,7 +236,90 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectContainer: (id) => {
-    set({ selectedContainerId: id });
+    set({ selectedContainerId: id, selectedPartId: null });
+  },
+
+  addPart: async (type) => {
+    const { designData, saveDesignData, selectedContainerId } = get();
+    if (!designData) return;
+    
+    // Always attach to the selected container, or default to world if none (we'll assume selected container)
+    // If no container, don't allow? Or just world coordinates.
+    // Let's use world coordinates but check floor Y.
+    // If we have a selected container, let's place it inside it.
+    let y = 0;
+    let x = 0;
+    let z = 0;
+
+    const selectedContainer = designData.containers.find((c: any) => c.id === selectedContainerId);
+    if (selectedContainer) {
+      y = selectedContainer.position[1] - selectedContainer.size[1] / 2;
+      x = selectedContainer.position[0];
+      z = selectedContainer.position[2];
+    } else if (designData.containers.length > 0) {
+      const c = designData.containers[0];
+      y = c.position[1] - c.size[1] / 2;
+      x = c.position[0];
+      z = c.position[2];
+    }
+
+    const newPart: Part = {
+      id: uuidv4(),
+      type,
+      position: [x, y, z],
+      rotation: [0, 0, 0],
+      scale: PART_DEFAULT_SIZES[type] || [1, 1, 1],
+      color: '#ffffff'
+    };
+
+    set((state) => ({
+      designData: {
+        ...state.designData!,
+        parts: [...(state.designData!.parts || []), newPart]
+      },
+      selectedPartId: newPart.id,
+      selectedContainerId: null // Deselect container to focus on part
+    }));
+    
+    await saveDesignData();
+  },
+
+  updatePart: (id, updates) => {
+    set((state) => {
+      if (!state.designData) return state;
+      return {
+        designData: {
+          ...state.designData,
+          parts: (state.designData.parts || []).map((p: Part) => 
+            p.id === id ? { ...p, ...updates } : p
+          )
+        }
+      }
+    });
+    
+    const w = window as any;
+    clearTimeout(w.dbSaveTimeout);
+    w.dbSaveTimeout = setTimeout(() => {
+      get().saveDesignData();
+    }, 300);
+  },
+
+  removePart: async (id) => {
+    set((state) => {
+      if (!state.designData) return state;
+      return {
+        designData: {
+          ...state.designData,
+          parts: (state.designData.parts || []).filter((p: Part) => p.id !== id)
+        },
+        selectedPartId: state.selectedPartId === id ? null : state.selectedPartId
+      }
+    });
+    await get().saveDesignData();
+  },
+
+  selectPart: (id) => {
+    set({ selectedPartId: id, selectedContainerId: null });
   },
 
   cameraResetTrigger: 0,
