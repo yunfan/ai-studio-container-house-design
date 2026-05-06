@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, Environment, ContactShadows, Edges } from '@react-three/drei';
+import { OrbitControls, Grid, ContactShadows, Edges } from '@react-three/drei';
 import * as THREE from 'three';
 import { PartRenderer } from './parts/PartRenderer';
 
@@ -95,7 +95,6 @@ export function Scene() {
       <CameraController />
       <ambientLight intensity={0.6} />
       <directionalLight position={[10, 15, 10]} intensity={1.2} />
-      <Environment preset="city" />
       
       <Grid 
         infiniteGrid 
