@@ -56,17 +56,30 @@ export default function Editor() {
     return designData.parts?.find((p: any) => p.id === selectedPartId);
   }, [designData, selectedPartId]);
 
-  const handleSizeChange = (index: number, val: number) => {
+  const handlePartSizeChangeCm = (index: number, val: number) => {
+    if (!selectedPart) return;
+    let safeVal = val;
+    if (isNaN(safeVal) || safeVal < 0) safeVal = 0;
+
+    const newScale: [number, number, number] = selectedPart.scale 
+      ? [selectedPart.scale[0], selectedPart.scale[1], selectedPart.scale[2]] 
+      : [1, 1, 1];
+    newScale[index] = safeVal / 100;
+    
+    updatePart(selectedPart.id, { scale: newScale });
+  };
+
+  const handleSizeChangeCm = (index: number, val: number) => {
     if (!selectedContainer) return;
     let safeVal = val;
-    if (isNaN(safeVal) || safeVal <= 0.1) safeVal = 1;
+    if (isNaN(safeVal) || safeVal < 0) safeVal = 0;
 
-    const newSize = [...selectedContainer.size];
-    newSize[index] = safeVal;
+    const newSize: [number, number, number] = [selectedContainer.size[0], selectedContainer.size[1], selectedContainer.size[2]];
+    newSize[index] = safeVal / 100;
     
-    const newPos = [...selectedContainer.position];
+    const newPos: [number, number, number] = [selectedContainer.position[0], selectedContainer.position[1], selectedContainer.position[2]];
     if (index === 1) {
-      newPos[1] = safeVal / 2; // Always keep the bottom on the ground
+      newPos[1] = (safeVal / 100) / 2; // Always keep the bottom on the ground
     }
     updateContainer(selectedContainer.id, { size: newSize, position: newPos });
   };
@@ -393,24 +406,24 @@ export default function Editor() {
                       <div className="relative">
                         <input 
                           type="number"
-                          min="2" max="15" step="0.1"
-                          value={selectedContainer.size[0]}
-                          onChange={(e) => handleSizeChange(0, parseFloat(e.target.value) || 2)}
-                          className="w-20 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          min="0" max="2500" step="1"
+                          value={Math.round(selectedContainer.size[0] * 100)}
+                          onChange={(e) => handleSizeChangeCm(0, parseInt(e.target.value, 10))}
+                          className="w-24 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">m</span>
+                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">cm</span>
                       </div>
                     </div>
                     <input 
                       type="range"
-                      min="2" max="15" step="0.1"
-                      value={selectedContainer.size[0]}
-                      onChange={(e) => handleSizeChange(0, parseFloat(e.target.value))}
+                      min="0" max="2500" step="1"
+                      value={Math.round(selectedContainer.size[0] * 100)}
+                      onChange={(e) => handleSizeChangeCm(0, parseInt(e.target.value, 10))}
                       className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
-                      <span>2m</span>
-                      <span>15m</span>
+                      <span>0cm</span>
+                      <span>2500cm</span>
                     </div>
                   </div>
 
@@ -421,24 +434,24 @@ export default function Editor() {
                       <div className="relative">
                         <input 
                           type="number"
-                          min="2" max="5" step="0.1"
-                          value={selectedContainer.size[2]}
-                          onChange={(e) => handleSizeChange(2, parseFloat(e.target.value) || 2)}
-                          className="w-20 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          min="0" max="1000" step="1"
+                          value={Math.round(selectedContainer.size[2] * 100)}
+                          onChange={(e) => handleSizeChangeCm(2, parseInt(e.target.value, 10))}
+                          className="w-24 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">m</span>
+                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">cm</span>
                       </div>
                     </div>
                     <input 
                       type="range"
-                      min="2" max="5" step="0.1"
-                      value={selectedContainer.size[2]}
-                      onChange={(e) => handleSizeChange(2, parseFloat(e.target.value))}
+                      min="0" max="1000" step="1"
+                      value={Math.round(selectedContainer.size[2] * 100)}
+                      onChange={(e) => handleSizeChangeCm(2, parseInt(e.target.value, 10))}
                       className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
-                      <span>2m</span>
-                      <span>5m</span>
+                      <span>0cm</span>
+                      <span>1000cm</span>
                     </div>
                   </div>
 
@@ -449,24 +462,24 @@ export default function Editor() {
                       <div className="relative">
                         <input 
                           type="number"
-                          min="2" max="4" step="0.1"
-                          value={selectedContainer.size[1]}
-                          onChange={(e) => handleSizeChange(1, parseFloat(e.target.value) || 2)}
-                          className="w-20 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          min="0" max="1000" step="1"
+                          value={Math.round(selectedContainer.size[1] * 100)}
+                          onChange={(e) => handleSizeChangeCm(1, parseInt(e.target.value, 10))}
+                          className="w-24 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">m</span>
+                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">cm</span>
                       </div>
                     </div>
                     <input 
                       type="range"
-                      min="2" max="4" step="0.1"
-                      value={selectedContainer.size[1]}
-                      onChange={(e) => handleSizeChange(1, parseFloat(e.target.value))}
+                      min="0" max="1000" step="1"
+                      value={Math.round(selectedContainer.size[1] * 100)}
+                      onChange={(e) => handleSizeChangeCm(1, parseInt(e.target.value, 10))}
                       className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
-                      <span>2m</span>
-                      <span>4m</span>
+                      <span>0cm</span>
+                      <span>1000cm</span>
                     </div>
                   </div>
 
@@ -475,6 +488,78 @@ export default function Editor() {
 
               {selectedPart && (
                 <div className="space-y-6">
+                  {/* Length (X) */}
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="text-sm font-bold text-slate-700">零件长度 (X)</label>
+                      <div className="relative">
+                        <input 
+                          type="number"
+                          min="0" max="1000" step="1"
+                          value={Math.round((selectedPart.scale?.[0] ?? 1) * 100)}
+                          onChange={(e) => handlePartSizeChangeCm(0, parseInt(e.target.value, 10))}
+                          className="w-24 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">cm</span>
+                      </div>
+                    </div>
+                    <input 
+                      type="range"
+                      min="0" max="1000" step="1"
+                      value={Math.round((selectedPart.scale?.[0] ?? 1) * 100)}
+                      onChange={(e) => handlePartSizeChangeCm(0, parseInt(e.target.value, 10))}
+                      className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Width (Z) */}
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="text-sm font-bold text-slate-700">零件宽度 (Z)</label>
+                      <div className="relative">
+                        <input 
+                          type="number"
+                          min="0" max="1000" step="1"
+                          value={Math.round((selectedPart.scale?.[2] ?? 1) * 100)}
+                          onChange={(e) => handlePartSizeChangeCm(2, parseInt(e.target.value, 10))}
+                          className="w-24 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">cm</span>
+                      </div>
+                    </div>
+                    <input 
+                      type="range"
+                      min="0" max="1000" step="1"
+                      value={Math.round((selectedPart.scale?.[2] ?? 1) * 100)}
+                      onChange={(e) => handlePartSizeChangeCm(2, parseInt(e.target.value, 10))}
+                      className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Height (Y) */}
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="text-sm font-bold text-slate-700">零件高度 (Y)</label>
+                      <div className="relative">
+                        <input 
+                          type="number"
+                          min="0" max="1000" step="1"
+                          value={Math.round((selectedPart.scale?.[1] ?? 1) * 100)}
+                          onChange={(e) => handlePartSizeChangeCm(1, parseInt(e.target.value, 10))}
+                          className="w-24 px-2 py-1 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="absolute right-2 top-1.5 text-xs font-semibold text-indigo-400 pointer-events-none">cm</span>
+                      </div>
+                    </div>
+                    <input 
+                      type="range"
+                      min="0" max="1000" step="1"
+                      value={Math.round((selectedPart.scale?.[1] ?? 1) * 100)}
+                      onChange={(e) => handlePartSizeChangeCm(1, parseInt(e.target.value, 10))}
+                      className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
                   {/* Position Info for part */}
                   <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
                     <label className="text-sm font-bold text-slate-700 mb-2 block">快捷操作</label>
