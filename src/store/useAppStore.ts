@@ -252,23 +252,44 @@ export const useAppStore = create<AppState>((set, get) => ({
     let z = 0;
 
     const selectedContainer = designData.containers.find((c: any) => c.id === selectedContainerId);
+    let targetFloorY = 0;
     if (selectedContainer) {
-      y = selectedContainer.position[1] - selectedContainer.size[1] / 2;
+      targetFloorY = selectedContainer.position[1] - selectedContainer.size[1] / 2;
       x = selectedContainer.position[0];
       z = selectedContainer.position[2];
     } else if (designData.containers.length > 0) {
       const c = designData.containers[0];
-      y = c.position[1] - c.size[1] / 2;
+      targetFloorY = c.position[1] - c.size[1] / 2;
       x = c.position[0];
       z = c.position[2];
     }
+
+    const scale = PART_DEFAULT_SIZES[type] || [1, 1, 1];
+    const myRadius = Math.max(scale[0], scale[2]) / 2;
+    let highestY = targetFloorY;
+
+    const parts = designData.parts || [];
+    for (const p of parts) {
+      const pScale = p.scale || [1, 1, 1];
+      const pRadius = Math.max(pScale[0], pScale[2]) / 2;
+      const distSq = Math.pow(x - p.position[0], 2) + Math.pow(z - p.position[2], 2);
+      // Collision
+      if (distSq < Math.pow(myRadius + pRadius, 2)) {
+         const pTop = p.position[1] + pScale[1] / 2;
+         if (pTop > highestY) {
+           highestY = pTop;
+         }
+      }
+    }
+
+    y = highestY + scale[1] / 2;
 
     const newPart: Part = {
       id: uuidv4(),
       type,
       position: [x, y, z],
       rotation: [0, 0, 0],
-      scale: PART_DEFAULT_SIZES[type] || [1, 1, 1],
+      scale: scale,
       color: '#ffffff'
     };
 

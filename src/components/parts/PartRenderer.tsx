@@ -63,23 +63,11 @@ export function PartRenderer() {
       const getRadius = (p: any) => Math.max(p.scale[0], p.scale[2]) / 2;
       const myRadius = getRadius(part) * 0.9; // slight tolerance
 
-      let hasCollision = false;
+      let isInsideContainer = false;
+      let targetFloorY = 0;
 
-      // 1. Check against other parts
-      for (const p of allParts) {
-        if (p.id === part.id) continue;
-        const pRadius = getRadius(p) * 0.9;
-        const distSq = Math.pow(newPos[0] - p.position[0], 2) + Math.pow(newPos[2] - p.position[2], 2);
-        // Using circle collision for simplicity and avoiding rotation corner-cases
-        if (distSq < Math.pow(myRadius + pRadius, 2)) {
-          hasCollision = true;
-          break;
-        }
-      }
-
-      // 2. Check against container bounds (must remain inside)
-      if (!hasCollision && containers.length > 0) {
-        let insideAContainer = false;
+      // 1. Check against container bounds (must remain inside) and get floor Y
+      if (containers.length > 0) {
         for (const c of containers) {
           const cMinX = c.position[0] - c.size[0] / 2;
           const cMaxX = c.position[0] + c.size[0] / 2;
@@ -92,16 +80,34 @@ export function PartRenderer() {
             newPos[2] - myRadius >= cMinZ &&
             newPos[2] + myRadius <= cMaxZ
           ) {
-            insideAContainer = true;
+            isInsideContainer = true;
+            targetFloorY = c.position[1] - c.size[1] / 2;
             break;
           }
         }
-        if (!insideAContainer) {
-          hasCollision = true;
-        }
       }
 
-      if (!hasCollision) {
+      // Allow movement only if inside bounds
+      if (isInsideContainer || containers.length === 0) {
+        // 2. Gravity and Stacking logic
+        let highestY = targetFloorY;
+
+        for (const p of allParts) {
+          if (p.id === part.id) continue;
+          const pRadius = getRadius(p) * 0.9;
+          const distSq = Math.pow(newPos[0] - p.position[0], 2) + Math.pow(newPos[2] - p.position[2], 2);
+          
+          if (distSq < Math.pow(myRadius + pRadius, 2)) {
+            // It's overlapping on X/Z plane. Stack it on top!
+            const pTop = p.position[1] + (p.scale[1] / 2);
+            if (pTop > highestY) {
+              highestY = pTop;
+            }
+          }
+        }
+
+        newPos[1] = highestY + (part.scale[1] / 2);
+
         updatePart(selectedPartId, { position: newPos, rotation: newRot });
       }
       
